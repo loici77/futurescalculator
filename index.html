@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>선물 증거금 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080c14;
+  --bg1:     #0d1320;
+  --bg2:     #111827;
+  --border:  #1c2d47;
+  --border2: #243550;
+  --accent:  #00e5c0;
+  --accent2: #00b398;
+  --red:     #ff4560;
+  --amber:   #f5a623;
+  --blue:    #3a8dff;
+  --text:    #e4f0ff;
+  --muted:   #7a9abf;
+  --mono:    'JetBrains Mono', monospace;
+  --sans:    'Noto Sans KR', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,229,192,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,192,.025) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:32px 20px 80px}
+
+/* header */
+.header-tag{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;
+  margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.header-tag::before{content:'';display:inline-block;width:28px;height:1px;background:var(--accent)}
+h1{font-size:clamp(24px,5vw,32px);font-weight:700;letter-spacing:-.02em;color:#fff;line-height:1.2}
+.subtitle{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:10px;letter-spacing:.03em}
+
+/* live board */
+.live-board{background:var(--bg1);border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px;margin-bottom:20px;position:relative;overflow:hidden}
+.live-board::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent2),transparent);opacity:.35}
+.lb-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.lb-title{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;
+  color:var(--muted);text-transform:uppercase}
+.lb-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:pulse 2s ease infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.lb-time{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:auto}
+.lb-refresh{background:transparent;border:1px solid var(--border);border-radius:5px;
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);transition:all .15s}
+.lb-refresh:hover{border-color:var(--accent);color:var(--accent)}
+.lb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.lb-item{background:var(--bg2);border:1px solid var(--border);border-radius:9px;
+  padding:10px 12px;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;gap:4px;position:relative}
+.lb-item:hover{border-color:var(--accent2);background:rgba(0,229,192,.05)}
+.lb-item.selected{border-color:var(--accent);background:rgba(0,229,192,.08)}
+.lb-item.skeleton{opacity:.5}
+.lb-name{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em}
+.lb-val{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--text);line-height:1.2}
+.lb-chg{font-family:var(--mono);font-size:12px;font-weight:500}
+.lb-chg.up{color:#22c55e}
+.lb-chg.dn{color:var(--red)}
+.lb-chg.flat{color:var(--muted)}
+@media(max-width:500px){.lb-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* mode tabs */
+.mode-tabs{display:flex;gap:8px;margin:24px 0 20px}
+.mtab{flex:1;padding:13px 8px;background:var(--bg1);border:1px solid var(--border);border-radius:10px;
+  color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
+  text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.mtab .ms{font-family:var(--mono);font-size:11px;color:var(--muted);transition:color .2s;font-weight:400}
+.mtab.on{border-color:var(--accent2);background:rgba(0,229,192,.07);color:var(--accent)}
+.mtab.on .ms{color:var(--accent2)}
+
+/* card */
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:12px;
+  padding:22px;margin-bottom:14px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent2),transparent);opacity:.35}
+.card-title{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;
+  color:var(--muted);text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between}
+.card-title .ct-left{display:flex;align-items:center;gap:8px}
+.card-title span{color:var(--accent);font-size:15px}
+
+/* position rows */
+.pos-list{display:flex;flex-direction:column;gap:10px}
+
+.pos-row{
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;display:grid;gap:10px;
+  grid-template-columns: 180px 1fr 90px 90px 1fr auto;
+  align-items:center;
+  transition:border-color .2s;
+  position:relative;
+}
+.pos-row:hover{border-color:var(--border2)}
+.pos-row.has-value{border-color:rgba(0,229,192,.2)}
+
+.pos-row .field{display:flex;flex-direction:column;gap:5px}
+.pos-row label{font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase;font-weight:500}
+.pos-row label{font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
+
+/* product select */
+.prod-select{
+  width:100%;background:var(--bg1);border:1px solid var(--border2);
+  border-radius:7px;color:var(--text);font-family:var(--sans);font-size:14px;
+  padding:9px 11px;outline:none;cursor:pointer;transition:border-color .2s;
+  appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 24 24'%3E%3Cpath stroke='%237a9abf' stroke-width='2' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;
+}
+.prod-select:focus{border-color:var(--accent2)}
+option{background:var(--bg2)}
+
+/* price input with fetch */
+.price-wrap{display:flex;gap:6px;align-items:center}
+.price-input{
+  flex:1;background:var(--bg1);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:15px;
+  padding:9px 11px;outline:none;transition:border-color .2s;width:100%;
+  -moz-appearance:textfield;
+}
+.price-input::-webkit-inner-spin-button{display:none}
+.price-input:focus{border-color:var(--accent2)}
+.price-input::placeholder{color:var(--muted);font-size:13px}
+
+.fetch-mini{
+  width:30px;height:30px;flex-shrink:0;
+  background:var(--bg1);border:1px solid var(--border2);border-radius:6px;
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;
+}
+.fetch-mini:hover{border-color:var(--accent);color:var(--accent)}
+.fetch-mini.loading{opacity:.5;pointer-events:none}
+.fetch-mini svg{width:12px;height:12px}
+
+/* number input (contracts / rate) */
+.num-input{
+  width:100%;background:var(--bg1);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:15px;
+  padding:9px 11px;outline:none;transition:border-color .2s;text-align:right;
+  -moz-appearance:textfield;
+}
+.num-input::-webkit-inner-spin-button{display:none}
+.num-input:focus{border-color:var(--accent2)}
+
+/* result mini display */
+.pos-result{
+  font-family:var(--mono);font-size:13px;color:var(--accent);
+  text-align:right;white-space:nowrap;
+}
+.pos-result .pr-label{font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:500}
+.pos-result .pr-val{font-weight:600;font-size:14px}
+
+/* delete btn */
+.btn-del{
+  width:28px;height:28px;background:transparent;border:1px solid var(--border);
+  border-radius:6px;color:var(--muted);cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.btn-del:hover{border-color:var(--red);color:var(--red);background:rgba(255,69,96,.08)}
+.btn-del svg{width:13px;height:13px}
+
+/* add btn */
+.btn-add{
+  width:100%;padding:11px;margin-top:10px;
+  background:transparent;border:1px dashed var(--border2);border-radius:10px;
+  color:var(--muted);font-family:var(--sans);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-add:hover{border-color:var(--accent2);color:var(--accent);background:rgba(0,229,192,.04)}
+
+/* balance */
+.balance-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--border)}
+.balance-row label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.balance-input{
+  flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:14px;
+  padding:9px 14px;outline:none;transition:border-color .2s;
+  -moz-appearance:textfield;
+}
+.balance-input::-webkit-inner-spin-button{display:none}
+.balance-input:focus{border-color:var(--accent2)}
+
+/* calc btn */
+.btn-calc{width:100%;padding:16px;background:var(--accent);border:none;border-radius:10px;
+  color:#000;font-family:var(--sans);font-size:16px;font-weight:700;cursor:pointer;
+  letter-spacing:.04em;transition:all .2s;position:relative;overflow:hidden;margin-top:6px}
+.btn-calc::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);
+  transform:translateX(-100%);transition:transform .5s}
+.btn-calc:hover{background:#00ffda}
+.btn-calc:hover::after{transform:translateX(100%)}
+.btn-calc:active{transform:scale(.98)}
+
+/* results */
+#results{display:none}
+#results.show{display:block}
+
+/* summary grid */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.sum-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px}
+.sum-item.big{border-color:rgba(0,229,192,.3);background:rgba(0,229,192,.04)}
+.sum-item.amber{border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.04)}
+.sum-item.blue{border-color:rgba(58,141,255,.3);background:rgba(58,141,255,.04)}
+.s-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);
+  text-transform:uppercase;margin-bottom:10px;font-weight:500}
+.s-value{font-family:var(--mono);font-size:clamp(17px,3vw,23px);font-weight:600;color:#fff;line-height:1}
+.s-value.accent{color:var(--accent)}
+.s-value.amber{color:var(--amber)}
+.s-value.blue{color:var(--blue)}
+.s-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
+
+/* breakdown table */
+.breakdown{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
+.breakdown th{font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);
+  text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--border);text-align:right;font-weight:600}
+.breakdown th:first-child{text-align:left}
+.breakdown td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;
+  font-family:var(--mono);font-size:13px}
+.breakdown td:first-child{text-align:left;color:var(--text);font-size:13px}
+.breakdown tr:last-child td{border-bottom:none}
+.breakdown tr.total-row td{
+  border-top:1px solid var(--border2);border-bottom:none;
+  font-weight:600;color:var(--accent);padding-top:12px}
+.breakdown tr.total-row td:first-child{color:var(--accent)}
+
+/* scenario */
+.scenario-card{background:linear-gradient(135deg,rgba(255,69,96,.08),rgba(255,69,96,.02));
+  border:1px solid rgba(255,69,96,.25);border-radius:12px;padding:20px;margin-top:14px}
+.sc-title{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--red);
+  text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;font-weight:600}
+.sc-title::before{content:'⚠';font-size:14px}
+.sc-row{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid rgba(255,69,96,.1)}
+.sc-row:last-child{border-bottom:none}
+.sc-l{font-size:14px;color:var(--muted)}
+.sc-v{font-family:var(--mono);font-size:15px;font-weight:600;color:#fff}
+.sc-v.danger{color:var(--red)}
+.sc-v.ok{color:var(--accent)}
+.sc-v.amber{color:var(--amber)}
+
+.note{font-size:12px;color:var(--muted);line-height:1.8;margin-top:14px;padding:14px;
+  background:rgba(255,255,255,.02);border-radius:8px;border-left:2px solid var(--border2)}
+
+/* stock search */
+.stock-popup{display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center}
+.stock-popup.show{display:flex}
+.stock-box{background:var(--bg1);border:1px solid var(--border2);border-radius:14px;
+  width:min(480px,94vw);padding:20px;position:relative}
+.stock-box h3{font-size:14px;font-weight:600;color:#fff;margin-bottom:14px}
+.stock-search-input{width:100%;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:var(--sans);font-size:14px;
+  padding:10px 14px;outline:none;margin-bottom:10px;transition:border-color .2s}
+.stock-search-input:focus{border-color:var(--accent2)}
+.stock-list{max-height:300px;overflow-y:auto}
+.stock-item{padding:10px 12px;cursor:pointer;border-radius:8px;
+  display:flex;justify-content:space-between;align-items:center;transition:background .1s}
+.stock-item:hover{background:rgba(0,229,192,.07)}
+.si-name{font-size:14px;font-weight:500;color:var(--text)}
+.si-code{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:8px}
+.si-rate{font-family:var(--mono);font-size:12px;background:rgba(0,229,192,.1);
+  border:1px solid rgba(0,229,192,.2);border-radius:4px;padding:3px 8px;color:var(--accent);font-weight:600}
+.btn-close-popup{position:absolute;top:14px;right:14px;width:28px;height:28px;
+  background:transparent;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-close-popup:hover{border-color:var(--red);color:var(--red)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.sum-item{animation:fadeUp .3s ease both}
+.summary-grid .sum-item:nth-child(1){animation-delay:.00s}
+.summary-grid .sum-item:nth-child(2){animation-delay:.06s}
+.summary-grid .sum-item:nth-child(3){animation-delay:.12s}
+
+@media(max-width:680px){
+  .pos-row{grid-template-columns:1fr 1fr 1fr auto;grid-template-rows:auto auto}
+  .pos-row .field.f-prod{grid-column:1/-1}
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .summary-grid .sum-item:last-child{grid-column:span 2}
+}
+@media(max-width:420px){
+  .summary-grid{grid-template-columns:1fr}
+  .summary-grid .sum-item:last-child{grid-column:span 1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="margin-bottom:16px">
+  <div class="header-tag">KRX Futures Calculator</div>
+  <h1>선물 증거금 계산기</h1>
+  <div class="subtitle">지수선물 · 개별주식선물 · 복수종목 조합</div>
+</header>
+
+<!-- 실시간 시세 보드 -->
+<div class="live-board" id="liveBoard">
+  <div class="lb-header">
+    <span class="lb-title">현재 선물 시세</span>
+    <span class="lb-dot" id="liveDot"></span>
+    <span class="lb-time" id="liveTime">—</span>
+    <button class="lb-refresh" onclick="loadLivePrices()" title="새로고침">
+      <svg id="refreshIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+    </button>
+  </div>
+  <div class="lb-grid" id="lbGrid">
+    <div class="lb-item skeleton" id="lb-ks200"><span class="lb-name">KOSPI200</span><span class="lb-val">—</span><span class="lb-chg">—</span></div>
+    <div class="lb-item skeleton" id="lb-mini200"><span class="lb-name">미니K200</span><span class="lb-val">—</span><span class="lb-chg">—</span></div>
+    <div class="lb-item skeleton" id="lb-kq150"><span class="lb-name">코스닥150</span><span class="lb-val">—</span><span class="lb-chg">—</span></div>
+    <div class="lb-item skeleton" id="lb-minikq"><span class="lb-name">미니KQ</span><span class="lb-val">—</span><span class="lb-chg">—</span></div>
+  </div>
+</div>
+
+<!-- 모드 탭 -->
+<div class="mode-tabs">
+  <button class="mtab on" id="tab-single" onclick="switchMode('single',this)">
+    단일 종목
+    <span class="ms">1개 상품 계산</span>
+  </button>
+  <button class="mtab" id="tab-combo" onclick="switchMode('combo',this)">
+    종목 조합
+    <span class="ms">여러 포지션 합산</span>
+  </button>
+</div>
+
+<!-- ══════════════ 단일 모드 ══════════════ -->
+<div id="sec-single">
+
+  <div class="card">
+    <div class="card-title"><div class="ct-left"><span>01</span> 상품 선택</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="singleProdGrid">
+      <button class="prod-card on" data-key="ks200"   onclick="selectSingleProd('ks200',this)">
+        <span class="pc-name">KOSPI200 선물</span>
+        <span class="pc-meta">250,000원/pt · 9%/6%</span>
+      </button>
+      <button class="prod-card" data-key="mini200"  onclick="selectSingleProd('mini200',this)">
+        <span class="pc-name">미니 KOSPI200</span>
+        <span class="pc-meta">50,000원/pt · 9%/6%</span>
+      </button>
+      <button class="prod-card" data-key="kq150"    onclick="selectSingleProd('kq150',this)">
+        <span class="pc-name">코스닥150 선물</span>
+        <span class="pc-meta">10,000원/pt · 9%/6%</span>
+      </button>
+      <button class="prod-card" data-key="minikq"   onclick="selectSingleProd('minikq',this)">
+        <span class="pc-name">미니 코스닥150</span>
+        <span class="pc-meta">2,000원/pt · 9%/6%</span>
+      </button>
+      <button class="prod-card" data-key="stock" onclick="selectSingleProd('stock',this)" style="grid-column:span 2">
+        <span class="pc-name">개별주식선물 선택 →</span>
+        <span class="pc-meta" id="singleStockName">종목 미선택 · 10주/계약</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="ct-left"><span>02</span> 정보 입력</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="field" style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase" id="sPriceLabel">선물 지수</label>
+        <div style="display:flex;gap:6px">
+          <input type="number" class="price-input" id="sPrice" placeholder="385.50" step="0.01" min="0">
+          <button class="fetch-mini" onclick="fetchSingle()" title="실시간 조회">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </button>
+        </div>
+        <div class="fetch-status" id="sFetchStatus" style="font-family:var(--mono);font-size:10px;min-height:13px"></div>
+      </div>
+      <div class="field" style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">계약 수</label>
+        <input type="number" class="num-input" id="sContracts" value="1" min="1" step="1">
+      </div>
+      <div class="field" style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">보유자금 (선택)</label>
+        <input type="number" class="num-input" id="sBalance" placeholder="마진콜 분석용" min="0" step="1000000">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="field" style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">개시증거금율</label>
+        <div style="position:relative">
+          <input type="number" class="num-input" id="sInitRate" value="9" min="0" max="100" step="0.1" style="padding-right:28px">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted)">%</span>
+        </div>
+      </div>
+      <div class="field" style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-family:var(--mono);font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">유지증거금율</label>
+        <div style="position:relative">
+          <input type="number" class="num-input" id="sMaintRate" value="6" min="0" max="100" step="0.1" style="padding-right:28px">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted)">%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ 조합 모드 ══════════════ -->
+<div id="sec-combo" style="display:none">
+  <div class="card">
+    <div class="card-title">
+      <div class="ct-left"><span>01</span> 포지션 구성</div>
+    </div>
+    <div class="pos-list" id="posList"></div>
+    <button class="btn-add" onclick="addRow()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      포지션 추가
+    </button>
+
+    <div class="balance-row">
+      <label>총 보유자금 (선택)</label>
+      <input type="number" class="balance-input" id="comboBalance" placeholder="마진콜 분석 시 입력" min="0" step="1000000">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">원</span>
+    </div>
+  </div>
+</div>
+
+<button class="btn-calc" onclick="calculate()">계산하기</button>
+
+<!-- 결과 -->
+<div id="results">
+  <div style="height:18px"></div>
+  <div class="card">
+    <div class="card-title"><div class="ct-left"><span>—</span> 계산 결과</div></div>
+
+    <div class="summary-grid">
+      <div class="sum-item big">
+        <div class="s-label">총 명목가치</div>
+        <div class="s-value accent" id="r-total">—</div>
+        <div class="s-sub" id="r-totalSub">—</div>
+      </div>
+      <div class="sum-item amber">
+        <div class="s-label">필요 개시증거금</div>
+        <div class="s-value amber" id="r-init">—</div>
+        <div class="s-sub" id="r-initSub">—</div>
+      </div>
+      <div class="sum-item">
+        <div class="s-label">필요 유지증거금</div>
+        <div class="s-value" id="r-maint">—</div>
+        <div class="s-sub" id="r-maintSub">—</div>
+      </div>
+      <div class="sum-item blue">
+        <div class="s-label">레버리지</div>
+        <div class="s-value blue" id="r-leverage">—</div>
+        <div class="s-sub">총명목 ÷ 개시증거금</div>
+      </div>
+      <div class="sum-item" style="grid-column:span 2" id="r-perItem" style="display:none">
+        <div class="s-label">계약당 명목가치</div>
+        <div class="s-value" id="r-per">—</div>
+        <div class="s-sub" id="r-perSub">—</div>
+      </div>
+    </div>
+
+    <!-- 조합 모드 개별 내역 -->
+    <div id="breakdownWrap" style="display:none">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">포지션별 내역</div>
+      <table class="breakdown" id="breakdownTable"></table>
+    </div>
+  </div>
+
+  <div id="marginCallCard" class="scenario-card" style="display:none">
+    <div class="sc-title">마진콜 시나리오</div>
+    <div class="sc-row"><span class="sc-l">보유자금</span><span class="sc-v" id="sc-balance">—</span></div>
+    <div class="sc-row"><span class="sc-l">필요 개시증거금</span><span class="sc-v" id="sc-init">—</span></div>
+    <div class="sc-row"><span class="sc-l">필요 유지증거금</span><span class="sc-v" id="sc-maint">—</span></div>
+    <div class="sc-row"><span class="sc-l">증거금 여유 (개시 기준)</span><span class="sc-v" id="sc-room">—</span></div>
+    <div class="sc-row" id="sc-singleDrop" style="display:none">
+      <span class="sc-l">마진콜 발생 지수/가격</span><span class="sc-v danger" id="sc-callPx">—</span>
+    </div>
+    <div class="sc-row" id="sc-singleDropPct" style="display:none">
+      <span class="sc-l">허용 하락률</span><span class="sc-v" id="sc-dropPct">—</span>
+    </div>
+    <div class="sc-row"><span class="sc-l">증거금 상태</span><span class="sc-v" id="sc-status">—</span></div>
+  </div>
+
+  <div class="note" id="resultNote">※ KRX 위탁증거금 기준. 증권사·종목별로 다를 수 있습니다.</div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- 종목 검색 팝업 -->
+<div class="stock-popup" id="stockPopup">
+  <div class="stock-box">
+    <h3>종목 선택</h3>
+    <button class="btn-close-popup" onclick="closeStockPopup()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <input type="text" class="stock-search-input" id="popupSearch" placeholder="종목명 또는 코드 검색..." oninput="renderStockList(this.value)">
+    <div class="stock-list" id="popupList"></div>
+  </div>
+</div>
+
+<style>
+/* product card (단일모드) */
+.prod-card{background:var(--bg2);border:1px solid var(--border);border-radius:9px;
+  padding:13px 15px;cursor:pointer;text-align:left;transition:all .15s;
+  display:flex;flex-direction:column;gap:5px}
+.prod-card .pc-name{font-size:14px;font-weight:600;color:var(--text)}
+.prod-card .pc-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.prod-card.on{border-color:var(--accent2);background:rgba(0,229,192,.06)}
+.prod-card.on .pc-name{color:var(--accent)}
+.prod-card.on .pc-meta{color:var(--accent2)}
+.prod-card:hover:not(.on){border-color:var(--border2)}
+.fetch-status.ok{color:var(--accent)}
+.fetch-status.err{color:var(--red)}
+</style>
+
+<script>
+// ─── 마스터 데이터 ─────────────────────────────────────────
+const IDX_PRODUCTS = {
+  ks200:   { label:'KOSPI200 선물',  mult:250_000, unit:'pt', nfCode:'FUT',  initR:9,  maintR:6  },
+  mini200: { label:'미니 KOSPI200',  mult:50_000,  unit:'pt', nfCode:'MFU',  initR:9,  maintR:6  },
+  kq150:   { label:'코스닥150 선물', mult:10_000,  unit:'pt', nfCode:'QFU',  initR:9,  maintR:6  },
+  minikq:  { label:'미니 코스닥150', mult:2_000,   unit:'pt', nfCode:'QMFU', initR:9,  maintR:6  },
+};
+
+const STOCKS = [
+  { name:'삼성전자',        code:'005930', initR:15, maintR:10 },
+  { name:'SK하이닉스',      code:'000660', initR:15, maintR:10 },
+  { name:'LG에너지솔루션',  code:'373220', initR:20, maintR:15 },
+  { name:'삼성바이오로직스',code:'207940', initR:20, maintR:15 },
+  { name:'현대차',          code:'005380', initR:15, maintR:10 },
+  { name:'POSCO홀딩스',     code:'005490', initR:15, maintR:10 },
+  { name:'KB금융',          code:'105560', initR:15, maintR:10 },
+  { name:'셀트리온',        code:'068270', initR:20, maintR:15 },
+  { name:'카카오',          code:'035720', initR:20, maintR:15 },
+  { name:'NAVER',           code:'035420', initR:15, maintR:10 },
+  { name:'LG화학',          code:'051910', initR:15, maintR:10 },
+  { name:'삼성SDI',         code:'006400', initR:20, maintR:15 },
+  { name:'HMM',             code:'011200', initR:20, maintR:15 },
+  { name:'두산에너빌리티',  code:'034020', initR:20, maintR:15 },
+  { name:'에코프로비엠',    code:'247540', initR:25, maintR:18 },
+  { name:'에코프로',        code:'086520', initR:25, maintR:18 },
+  { name:'포스코퓨처엠',    code:'003670', initR:20, maintR:15 },
+  { name:'LG전자',          code:'066570', initR:15, maintR:10 },
+  { name:'삼성물산',        code:'028260', initR:15, maintR:10 },
+  { name:'SK이노베이션',    code:'096770', initR:20, maintR:15 },
+  { name:'롯데케미칼',      code:'011170', initR:20, maintR:15 },
+  { name:'기아',            code:'000270', initR:15, maintR:10 },
+  { name:'신한지주',        code:'055550', initR:15, maintR:10 },
+  { name:'하나금융지주',    code:'086790', initR:15, maintR:10 },
+  { name:'삼성화재',        code:'000810', initR:15, maintR:10 },
+  { name:'효성중공업',      code:'298040', initR:20, maintR:15 },
+];
+
+// ─── 상태 ─────────────────────────────────────────────────
+let curMode = 'single';
+let singleProd = 'ks200';
+let singleStock = null;
+let popupTarget = null;
+let rowIdSeq = 0;
+let rows = [];
+const liveCache = {};             // { nfCode: { price, cp, ts } }
+
+// ─── 실시간 시세 보드 ─────────────────────────────────────
+async function fetchNF(nfCode) {
+  if (liveCache[nfCode] && Date.now() - liveCache[nfCode].ts < 60_000)
+    return liveCache[nfCode];
+  const r = await fetch(`https://m.stock.naver.com/api/item/getFutureDetail.naver?code=${nfCode}`, { mode:'cors' });
+  if (!r.ok) throw 0;
+  const d = await r.json();
+  const price = parseFloat((d.closePrice||'').replace(/,/g,''));
+  const cp    = parseFloat(d.fluctuationsRatio||'0');
+  if (isNaN(price)||price<=0) throw 0;
+  liveCache[nfCode] = { price, cp, ts: Date.now() };
+  return liveCache[nfCode];
+}
+
+async function fetchNFStock(code) {
+  const key = 'S'+code;
+  if (liveCache[key] && Date.now() - liveCache[key].ts < 60_000)
+    return liveCache[key];
+  const r = await fetch(`https://m.stock.naver.com/api/item/getOverallStockInfo.naver?code=${code}`, { mode:'cors' });
+  if (!r.ok) throw 0;
+  const d = await r.json();
+  const price = parseFloat((d.closePrice||d.currentPrice||'').replace(/,/g,''));
+  const cp    = parseFloat(d.fluctuationsRatio||'0');
+  if (isNaN(price)||price<=0) throw 0;
+  liveCache[key] = { price, cp, ts: Date.now() };
+  return liveCache[key];
+}
+
+async function loadLivePrices() {
+  const icon = document.getElementById('refreshIcon');
+  icon.style.animation = 'spin 1s linear infinite';
+  const entries = Object.entries(IDX_PRODUCTS);
+  await Promise.allSettled(entries.map(async ([key, p]) => {
+    const el = document.getElementById('lb-' + key);
+    if (!el) return;
+    try {
+      const { price, cp } = await fetchNF(p.nfCode);
+      const valEl = el.querySelector('.lb-val');
+      const chgEl = el.querySelector('.lb-chg');
+      valEl.textContent = price.toFixed(2);
+      chgEl.textContent = `${cp >= 0 ? '+' : ''}${cp}%`;
+      chgEl.className   = 'lb-chg ' + (cp > 0 ? 'up' : cp < 0 ? 'dn' : 'flat');
+      el.classList.remove('skeleton');
+      el.dataset.price = price;
+      el.dataset.cp    = cp;
+    } catch {
+      el.querySelector('.lb-val').textContent = '—';
+      el.querySelector('.lb-chg').textContent = '조회불가';
+    }
+  }));
+  const now = new Date();
+  document.getElementById('liveTime').textContent =
+    `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} 기준`;
+  icon.style.animation = '';
+}
+
+function highlightLiveItem(key) {
+  document.querySelectorAll('.lb-item').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('lb-' + key);
+  if (el) el.classList.add('selected');
+}
+
+// ─── 모드 전환 ────────────────────────────────────────────
+function switchMode(mode, el) {
+  curMode = mode;
+  document.querySelectorAll('.mtab').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('sec-single').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('sec-combo').style.display  = mode === 'combo'  ? '' : 'none';
+  document.getElementById('results').classList.remove('show');
+  if (mode === 'combo' && rows.length === 0) addRow();
+}
+
+// ─── 단일모드 상품 선택 ───────────────────────────────────
+async function selectSingleProd(key, el) {
+  singleProd = key;
+  document.querySelectorAll('#singleProdGrid .prod-card').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  if (key === 'stock') {
+    openStockPopup('single');
+  } else {
+    const p = IDX_PRODUCTS[key];
+    document.getElementById('sPriceLabel').textContent = p.label + ' 지수';
+    document.getElementById('sInitRate').value  = p.initR;
+    document.getElementById('sMaintRate').value = p.maintR;
+    highlightLiveItem(key);
+    // 캐시에 있으면 바로, 없으면 조회
+    try {
+      const cached = liveCache[p.nfCode];
+      if (cached) {
+        document.getElementById('sPrice').value = cached.price;
+        document.getElementById('sFetchStatus').className = 'fetch-status ok';
+        document.getElementById('sFetchStatus').textContent =
+          `✓ ${cached.price.toFixed(2)} pt (${cached.cp>=0?'+':''}${cached.cp}%)`;
+        calculate();
+      } else {
+        await fetchSingle();
+        calculate();
+      }
+    } catch {}
+  }
+}
+
+// ─── 단일모드 실시간 조회 ─────────────────────────────────
+async function fetchSingle(autoCalc = false) {
+  const status = document.getElementById('sFetchStatus');
+  const input  = document.getElementById('sPrice');
+  let isStock = singleProd === 'stock';
+
+  if (isStock && !singleStock) { alert('종목을 먼저 선택하세요.'); return; }
+
+  const btn = document.querySelector('#sec-single .fetch-mini');
+  btn.classList.add('loading');
+  btn.querySelector('svg').style.animation = 'spin 1s linear infinite';
+  status.className = 'fetch-status';
+  status.textContent = '조회 중...';
+
+  try {
+    let data;
+    if (isStock) {
+      data = await fetchNFStock(singleStock.code);
+    } else {
+      data = await fetchNF(IDX_PRODUCTS[singleProd].nfCode);
+    }
+    input.value = data.price;
+    status.className = 'fetch-status ok';
+    status.textContent = `✓ ${isStock ? data.price.toLocaleString('ko-KR')+'원' : data.price.toFixed(2)+' pt'} (${data.cp>=0?'+':''}${data.cp}%)`;
+    if (autoCalc) calculate();
+  } catch {
+    status.className = 'fetch-status err';
+    status.textContent = '직접 조회 불가 — 수동 입력하세요';
+  } finally {
+    btn.classList.remove('loading');
+    btn.querySelector('svg').style.animation = '';
+  }
+}
+
+// ─── 조합모드 행 추가 ─────────────────────────────────────
+function addRow(defaultKey) {
+  const id = ++rowIdSeq;
+  const row = { id, prodKey:'ks200', stock:null };
+  rows.push(row);
+  renderRows();
+}
+
+function removeRow(id) {
+  rows = rows.filter(r => r.id !== id);
+  if (rows.length === 0) addRow();
+  else renderRows();
+}
+
+function renderRows() {
+  const list = document.getElementById('posList');
+  list.innerHTML = '';
+  rows.forEach(row => {
+    const prodOpts = [
+      ...Object.entries(IDX_PRODUCTS).map(([k,p]) => `<option value="${k}" ${row.prodKey===k?'selected':''}>${p.label}</option>`),
+      `<option value="stock" ${row.prodKey==='stock'?'selected':''}>개별주식선물 →</option>`
+    ].join('');
+
+    const stockLabel = row.prodKey === 'stock'
+      ? (row.stock ? row.stock.name : '종목 선택 ↗')
+      : (row.prodKey === 'stock' ? '종목 선택' : '');
+
+    const div = document.createElement('div');
+    div.className = 'pos-row';
+    div.id = 'row-' + row.id;
+    div.innerHTML = `
+      <div class="field f-prod">
+        <label>상품</label>
+        <select class="prod-select" onchange="onRowProdChange(${row.id},this.value)">
+          <optgroup label="지수선물">
+            ${Object.entries(IDX_PRODUCTS).map(([k,p])=>`<option value="${k}" ${row.prodKey===k?'selected':''}>${p.label}</option>`).join('')}
+          </optgroup>
+          <optgroup label="개별주식선물">
+            <option value="stock" ${row.prodKey==='stock'?'selected':''}>
+              ${row.stock ? row.stock.name : '종목 선택...'}
+            </option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field">
+        <label>${row.prodKey==='stock'?'현재가':'지수'}</label>
+        <div class="price-wrap">
+          <input type="number" class="price-input" id="price-${row.id}"
+            placeholder="${row.prodKey==='stock'?'주가':'지수'}"
+            step="${row.prodKey==='stock'?'100':'0.01'}" min="0">
+          <button class="fetch-mini" onclick="fetchRow(${row.id})" title="실시간 조회">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </button>
+        </div>
+        <div id="fstatus-${row.id}" style="font-family:var(--mono);font-size:10px;min-height:13px;margin-top:2px"></div>
+      </div>
+      <div class="field">
+        <label>계약수</label>
+        <input type="number" class="num-input" id="contracts-${row.id}" value="1" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>개시%</label>
+        <input type="number" class="num-input" id="initr-${row.id}"
+          value="${row.prodKey==='stock'?(row.stock?row.stock.initR:20):IDX_PRODUCTS[row.prodKey]?.initR||9}"
+          min="0" max="100" step="0.1">
+      </div>
+      <div class="pos-result" id="res-${row.id}">
+        <div class="pr-label">개시증거금</div>
+        <div class="pr-val">—</div>
+      </div>
+      <button class="btn-del" onclick="removeRow(${row.id})" title="삭제">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+    list.appendChild(div);
+
+    // 실시간 미리보기
+    const priceEl    = div.querySelector(`#price-${row.id}`);
+    const contractEl = div.querySelector(`#contracts-${row.id}`);
+    const initREl    = div.querySelector(`#initr-${row.id}`);
+    [priceEl, contractEl, initREl].forEach(el =>
+      el.addEventListener('input', () => updateRowPreview(row.id))
+    );
+  });
+}
+
+async function onRowProdChange(id, val) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  if (val === 'stock') {
+    row.prodKey = 'stock';
+    openStockPopup(id);
+  } else {
+    row.prodKey = val;
+    row.stock = null;
+    const p = IDX_PRODUCTS[val];
+    const initEl = document.getElementById('initr-' + id);
+    if (initEl) initEl.value = p.initR;
+    renderRows();
+    await fetchRow(id); // 자동 조회
+  }
+}
+
+function updateRowPreview(id) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  const price     = parseFloat(document.getElementById('price-'+id)?.value) || 0;
+  const contracts = parseInt(document.getElementById('contracts-'+id)?.value) || 1;
+  const initR     = parseFloat(document.getElementById('initr-'+id)?.value) / 100 || 0.09;
+  const mult      = row.prodKey === 'stock' ? 10 : (IDX_PRODUCTS[row.prodKey]?.mult || 250000);
+  const init      = price * mult * contracts * initR;
+  const resEl     = document.getElementById('res-'+id);
+  if (resEl && price > 0) {
+    resEl.querySelector('.pr-val').textContent = fmtW(init);
+    document.getElementById('row-'+id)?.classList.add('has-value');
+  }
+}
+
+async function fetchRow(id) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  if (row.prodKey === 'stock' && !row.stock) return;
+
+  const btn    = document.querySelector(`#row-${id} .fetch-mini`);
+  const status = document.getElementById('fstatus-'+id);
+  if (!btn || !status) return;
+  btn.classList.add('loading');
+  btn.querySelector('svg').style.animation = 'spin 1s linear infinite';
+  status.style.color = 'var(--muted)';
+  status.textContent = '조회중...';
+
+  try {
+    let data;
+    if (row.prodKey === 'stock') {
+      data = await fetchNFStock(row.stock.code);
+    } else {
+      data = await fetchNF(IDX_PRODUCTS[row.prodKey].nfCode);
+    }
+    document.getElementById('price-'+id).value = data.price;
+    status.style.color = 'var(--accent)';
+    status.textContent = `✓ ${row.prodKey==='stock'?data.price.toLocaleString('ko-KR')+'원':data.price.toFixed(2)+' pt'} (${data.cp>=0?'+':''}${data.cp}%)`;
+    updateRowPreview(id);
+  } catch {
+    status.style.color = 'var(--red)';
+    status.textContent = '조회 불가 — 수동 입력';
+  } finally {
+    btn.classList.remove('loading');
+    btn.querySelector('svg').style.animation = '';
+  }
+}
+
+// ─── 종목 팝업 ────────────────────────────────────────────
+function openStockPopup(target) {
+  popupTarget = target;
+  document.getElementById('popupSearch').value = '';
+  renderStockList('');
+  document.getElementById('stockPopup').classList.add('show');
+  setTimeout(() => document.getElementById('popupSearch').focus(), 100);
+}
+function closeStockPopup() {
+  document.getElementById('stockPopup').classList.remove('show');
+  // 취소 시 단일모드면 첫번째 지수선물로 되돌리기
+  if (popupTarget === 'single' && singleProd === 'stock' && !singleStock) {
+    selectSingleProd('ks200', document.querySelector('#singleProdGrid .prod-card'));
+  }
+}
+function renderStockList(q) {
+  const list = document.getElementById('popupList');
+  const hits = q.trim() === ''
+    ? STOCKS
+    : STOCKS.filter(s => s.name.includes(q) || s.code.includes(q));
+  list.innerHTML = hits.map(s => `
+    <div class="stock-item" onclick="pickStock(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+      <span><span class="si-name">${s.name}</span><span class="si-code">${s.code}</span></span>
+      <span class="si-rate">${s.initR}%</span>
+    </div>
+  `).join('') || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">검색 결과 없음</div>';
+}
+async function pickStock(s) {
+  closeStockPopup();
+  if (popupTarget === 'single') {
+    singleStock = s;
+    document.getElementById('singleStockName').textContent = `${s.name} · 10주/계약`;
+    document.getElementById('sPriceLabel').textContent = s.name + ' 현재가';
+    document.getElementById('sInitRate').value  = s.initR;
+    document.getElementById('sMaintRate').value = s.maintR;
+    document.getElementById('sFetchStatus').textContent = '';
+    highlightLiveItem(null);
+    await fetchSingle(true);  // 자동 조회 + 계산
+  } else {
+    const row = rows.find(r => r.id === popupTarget);
+    if (row) {
+      row.stock = s;
+      row.prodKey = 'stock';
+      renderRows();
+      await fetchRow(row.id); // 자동 조회
+    }
+  }
+}
+document.getElementById('stockPopup').addEventListener('click', e => {
+  if (e.target === document.getElementById('stockPopup')) closeStockPopup();
+});
+
+// ─── 계산 ─────────────────────────────────────────────────
+function fmtW(n) { return Math.round(n).toLocaleString('ko-KR') + '원'; }
+
+function calculate() {
+  document.getElementById('results').classList.remove('show');
+
+  if (curMode === 'single') calcSingle();
+  else calcCombo();
+}
+
+function calcSingle() {
+  const price     = parseFloat(document.getElementById('sPrice').value);
+  const contracts = parseInt(document.getElementById('sContracts').value) || 1;
+  const initRate  = parseFloat(document.getElementById('sInitRate').value) / 100;
+  const maintRate = parseFloat(document.getElementById('sMaintRate').value) / 100;
+  const balance   = parseFloat(document.getElementById('sBalance').value) || null;
+
+  if (!price || price <= 0)    { alert('가격/지수를 입력하세요.'); return; }
+  if (initRate <= 0)           { alert('증거금율을 입력하세요.'); return; }
+  if (maintRate >= initRate)   { alert('유지증거금율은 개시증거금율보다 낮아야 합니다.'); return; }
+
+  let mult, unitLabel, perSub, noteText;
+  if (singleProd === 'stock') {
+    mult = 10;
+    unitLabel = '원';
+    perSub = `${singleStock?.name||'주식'} × 10주`;
+    noteText = `※ 개별주식선물 거래승수 10주/계약. 종목별 증거금율 상이.`;
+  } else {
+    const p = IDX_PRODUCTS[singleProd];
+    mult = p.mult; unitLabel = 'pt';
+    perSub = `${p.label} × ${p.mult.toLocaleString('ko-KR')}원`;
+    noteText = `※ ${p.label}. 거래승수 ${p.mult.toLocaleString('ko-KR')}원/pt. KRX 기준.`;
+  }
+
+  const perContract   = price * mult;
+  const total         = perContract * contracts;
+  const init          = total * initRate;
+  const maint         = total * maintRate;
+  const lev           = (1 / initRate).toFixed(2);
+
+  document.getElementById('r-per').textContent    = fmtW(perContract);
+  document.getElementById('r-perSub').textContent  = perSub;
+  document.getElementById('r-perItem').style.display = '';
+  document.getElementById('r-total').textContent   = fmtW(total);
+  document.getElementById('r-totalSub').textContent = `${contracts}계약 기준`;
+  document.getElementById('r-init').textContent    = fmtW(init);
+  document.getElementById('r-initSub').textContent  = `개시 ${(initRate*100).toFixed(1)}%`;
+  document.getElementById('r-maint').textContent   = fmtW(maint);
+  document.getElementById('r-maintSub').textContent = `유지 ${(maintRate*100).toFixed(1)}%`;
+  document.getElementById('r-leverage').textContent = `${lev}배`;
+  document.getElementById('breakdownWrap').style.display = 'none';
+  document.getElementById('resultNote').textContent = noteText;
+
+  showScenario(total, init, maint, balance, mult, contracts, price, singleProd==='stock');
+}
+
+function calcCombo() {
+  if (rows.length === 0) return;
+  const balance = parseFloat(document.getElementById('comboBalance').value) || null;
+  let totalNotional = 0, totalInit = 0, totalMaint = 0;
+  const breakdown = [];
+  let valid = true;
+
+  for (const row of rows) {
+    const price     = parseFloat(document.getElementById('price-'+row.id)?.value);
+    const contracts = parseInt(document.getElementById('contracts-'+row.id)?.value) || 1;
+    const initR     = parseFloat(document.getElementById('initr-'+row.id)?.value) / 100 || 0.09;
+
+    if (!price || price <= 0) {
+      alert(`포지션 ${rows.indexOf(row)+1}의 가격을 입력하세요.`); valid=false; break;
+    }
+
+    const isStock = row.prodKey === 'stock';
+    const mult    = isStock ? 10 : IDX_PRODUCTS[row.prodKey]?.mult || 250000;
+    const label   = isStock ? (row.stock?.name||'주식선물') : IDX_PRODUCTS[row.prodKey]?.label||'';
+    const maintR  = initR * (2/3);
+    const notional = price * mult * contracts;
+    const init    = notional * initR;
+    const maint   = notional * maintR;
+
+    totalNotional += notional;
+    totalInit     += init;
+    totalMaint    += maint;
+    breakdown.push({ label, price, contracts, mult, notional, init, maint, initR, isStock });
+  }
+  if (!valid) return;
+
+  const lev = (totalNotional / totalInit).toFixed(2);
+
+  document.getElementById('r-perItem').style.display = 'none';
+  document.getElementById('r-total').textContent    = fmtW(totalNotional);
+  document.getElementById('r-totalSub').textContent  = `${rows.length}개 포지션 합산`;
+  document.getElementById('r-init').textContent     = fmtW(totalInit);
+  document.getElementById('r-initSub').textContent   = '포지션별 개시증거금 합산';
+  document.getElementById('r-maint').textContent    = fmtW(totalMaint);
+  document.getElementById('r-maintSub').textContent  = '유지증거금 합산';
+  document.getElementById('r-leverage').textContent  = `${lev}배`;
+  document.getElementById('resultNote').textContent  = '※ 유지증거금은 개시증거금의 2/3로 추산. KRX 기준이며 종목별 상이.';
+
+  // 개별 내역 테이블
+  const tbody = breakdown.map(b => `
+    <tr>
+      <td>${b.label}</td>
+      <td>${b.isStock ? fmtW(b.price) : b.price.toFixed(2)+' pt'}</td>
+      <td>${b.contracts}계약</td>
+      <td>${fmtW(b.notional)}</td>
+      <td>${fmtW(b.init)}</td>
+      <td>${(b.initR*100).toFixed(1)}%</td>
+    </tr>
+  `).join('');
+  document.getElementById('breakdownTable').innerHTML = `
+    <thead><tr>
+      <th style="text-align:left">상품</th>
+      <th>가격</th><th>계약</th>
+      <th>명목가치</th><th>개시증거금</th><th>증거금율</th>
+    </tr></thead>
+    <tbody>${tbody}</tbody>
+    <tfoot><tr class="total-row">
+      <td colspan="3">합계</td>
+      <td>${fmtW(totalNotional)}</td>
+      <td>${fmtW(totalInit)}</td>
+      <td>—</td>
+    </tr></tfoot>
+  `;
+  document.getElementById('breakdownWrap').style.display = '';
+
+  showScenario(totalNotional, totalInit, totalMaint, balance, null, null, null, false);
+}
+
+function showScenario(total, init, maint, balance, mult, contracts, price, isStock) {
+  const mc = document.getElementById('marginCallCard');
+  if (!balance) { mc.style.display = 'none'; } else {
+    mc.style.display = '';
+    const room = balance - init;
+    document.getElementById('sc-balance').textContent = fmtW(balance);
+    document.getElementById('sc-init').textContent    = fmtW(init);
+    document.getElementById('sc-maint').textContent   = fmtW(maint);
+    document.getElementById('sc-room').textContent    = fmtW(room);
+
+    // 단일 종목만 마진콜 지수 표시
+    const singleDropRow = document.getElementById('sc-singleDrop');
+    const singlePctRow  = document.getElementById('sc-singleDropPct');
+    if (mult && contracts && price) {
+      const callDrop = (balance - maint) / (mult * contracts);
+      const callPx   = price - callDrop;
+      const dropPct  = (callDrop / price * 100).toFixed(2);
+      document.getElementById('sc-callPx').textContent  =
+        isStock ? fmtW(callPx) : callPx.toFixed(2)+' pt';
+      document.getElementById('sc-dropPct').textContent = `${dropPct}%`;
+      singleDropRow.style.display = '';
+      singlePctRow.style.display  = '';
+    } else {
+      singleDropRow.style.display = 'none';
+      singlePctRow.style.display  = 'none';
+    }
+
+    const statusEl = document.getElementById('sc-status');
+    if (balance < maint)       { statusEl.textContent='⚠ 마진콜 상태';       statusEl.className='sc-v danger'; }
+    else if (balance < init)   { statusEl.textContent='⚡ 개시증거금 부족';   statusEl.className='sc-v amber'; }
+    else                       { statusEl.textContent='✓ 정상';             statusEl.className='sc-v ok'; }
+  }
+
+  const results = document.getElementById('results');
+  results.classList.add('show');
+  setTimeout(() => results.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+// ─── 라이브 보드 클릭 → 단일모드 자동 선택 ──────────────
+document.getElementById('lbGrid').addEventListener('click', e => {
+  const item = e.target.closest('.lb-item');
+  if (!item) return;
+  const key = item.id.replace('lb-', '');
+  if (!IDX_PRODUCTS[key]) return;
+  // 단일 탭으로 전환
+  if (curMode !== 'single') {
+    switchMode('single', document.getElementById('tab-single'));
+  }
+  // 해당 상품 카드 클릭
+  const card = document.querySelector(`#singleProdGrid [data-key="${key}"]`);
+  if (card) selectSingleProd(key, card);
+});
+
+// ─── 페이지 초기화 ───────────────────────────────────────
+(async function init() {
+  await loadLivePrices();
+  // 초기 KOSPI200 가격 자동 입력
+  try {
+    const cached = liveCache[IDX_PRODUCTS.ks200.nfCode];
+    if (cached) {
+      document.getElementById('sPrice').value = cached.price;
+      document.getElementById('sFetchStatus').className = 'fetch-status ok';
+      document.getElementById('sFetchStatus').textContent =
+        `✓ ${cached.price.toFixed(2)} pt (${cached.cp>=0?'+':''}${cached.cp}%)`;
+      highlightLiveItem('ks200');
+      calculate();
+    }
+  } catch {}
+})();
+</script>
+</body>
+</html>
